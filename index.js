@@ -3,12 +3,14 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const socketio = require('socket.io');
 
 const { PORT, CLIENT_ORIGIN } = require('./config');
 const { dbConnect } = require('./db-mongoose');
-// const {dbConnect} = require('./db-knex');
 
 const app = express();
+const http = require('http').Server(app);
+const io = socketio(http);
 
 app.use(
   morgan(process.env.NODE_ENV === 'production' ? 'common' : 'dev', {
@@ -21,6 +23,13 @@ app.use(
     origin: CLIENT_ORIGIN
   })
 );
+
+io.on('connection', function(socket) {
+  console.log('a user connected');
+  socket.on('disconnect', function() {
+    console.log('user disconnected');
+  });
+});
 
 function runServer(port = PORT) {
   const server = app
