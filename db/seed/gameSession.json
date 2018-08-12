@@ -1,6 +1,14 @@
 {
   "_id": "999999999999999999990001",
-  "players": [],
+  "roomCode": "asdf1234",
+  "players": [
+    { 
+      "name": "nameOfPlayer1"
+    },
+    {
+      "name": "nameOfPlayer2"
+    }
+  ],
   "stories": [
     "000000000000000000000001",
     "000000000000000000000002"
