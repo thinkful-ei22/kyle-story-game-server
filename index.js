@@ -266,26 +266,38 @@ io.on('connection', function(socket) {
         })
         .then(savedGame => {
           console.log('updatedGame: ', savedGame);
-          const savedData = savedGame.stories.find(story => story.id === action.storyId);
-          console.log('updatedStory: ', savedData);
-          const lastSentence = savedData.sentences[savedData.sentences.length - 1];
+          const updatedStory = savedGame.stories.find(story => story.id === action.storyId);
+          console.log('updatedStory: ', updatedStory);
+          const lastSentence = updatedStory.sentences[updatedStory.sentences.length - 1];
           io.in(savedGame.roomCode).emit('action', {
             type: 'ADD_SENTENCE_SUCCESS',
-            sentence: lastSentence.text,
+            text: lastSentence.text,
             author: lastSentence.author,
             id: lastSentence.id,
-            storyId: savedData.id
+            storyId: updatedStory.id
           });
           console.log('ADD_SENTENCE_SUCCESS action sent!');
-
-          const incomingAuthor = savedGame.players.find(player => player.name === lastSentence.author);
-          const addUpcomingPrompt = ({
-            type: 'ADD_UPCOMING_PROMPT',
-            storyId: savedData.id,
-            prompt: lastSentence.text,
-            receiver: incomingAuthor.passesTo
-          });
-          io.in(savedGame.roomCode).emit('action', addUpcomingPrompt);
+          
+          if (!updatedStory.completed) {
+            const incomingAuthor = savedGame.players.find(player => player.name === lastSentence.author);
+            const addUpcomingPrompt = ({
+              type: 'ADD_UPCOMING_PROMPT',
+              storyId: updatedStory.id,
+              prompt: lastSentence.text,
+              receiver: incomingAuthor.passesTo
+            });
+            io.in(savedGame.roomCode).emit('action', addUpcomingPrompt);
+            console.log('ADD_UPCOMING_PROMPT action sent!');
+          }
+          
+          if (savedGame.completed) {
+            const finishGame = ({
+              type: 'FINISH_GAME',
+              completed: savedGame.completed
+            });
+            io.in(savedGame.roomCode).emit('action', finishGame);
+            console.log('FINISH_GAME action sent!');
+          }
 
         })
         .catch(err => {
