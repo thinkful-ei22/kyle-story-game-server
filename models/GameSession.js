@@ -49,7 +49,7 @@ playerSchema.set('toObject', {
 const gameSessionSchema = new mongoose.Schema({
   roomCode: { type: String, required: true, unique: true },
   players: [playerSchema],
-  stories: [ { type: mongoose.Schema.Types.ObjectId, ref: 'Story' } ],
+  stories: [storySchema],
   started: { type: Boolean, default: false },
   completed: { type: Boolean, default: false }
   // when sentences are submitted, check the length of story.sentences

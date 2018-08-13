@@ -194,6 +194,9 @@ io.on('connection', function(socket) {
               console.log(player.name, ' passesTo: ', gameSession.players[nextIndex].name);
               player.passesTo = gameSession.players[nextIndex].name;
               console.log(player.passesTo);
+
+              // create an empty story for each player so there's a storyId to pass around
+              gameSession.stories.push({ creator: player.name });
             });
             gameSession.started = true;
           }
@@ -201,11 +204,20 @@ io.on('connection', function(socket) {
         })
         .then(gameSession => {
           console.log('players: *', gameSession.players);
-          if(gameSession && gameSession.started) {
+          console.log('stories: *', gameSession.stories);
+          if (gameSession && gameSession.started) {
             console.log('started game for roomCode: ', gameSession.roomCode);
             io.in(action.roomCode).emit('action', {
               type: 'START_GAME_SUCCESS',
               gameSession
+            });
+            gameSession.players.forEach(player => {
+              io.in(gameSession.roomCode).emit('action', {
+                type: 'ADD_INITIAL_PROMPT',
+                receiver: player.name,
+                storyId: gameSession.stories.find(story => story.creator === player.name).id,
+                prompt: 'Add a sentence to start your story. The only limit is your imagination!'
+              });
             });
           } else {
             console.log('unable to start game for roomCode: ', gameSession.roomcode);
@@ -216,7 +228,7 @@ io.on('connection', function(socket) {
           }
         })
         .catch(err => {
-          console.log('unable to start game for roomCode: ', action.roomcode);
+          console.log('unable to start game for roomCode: (catch)', action.roomcode);
           console.log('error: ', err);
           socket.emit('action', {
             type: 'START_GAME_ERROR',
@@ -226,39 +238,59 @@ io.on('connection', function(socket) {
       break;
     case 'SERVER_ADD_SENTENCE':
       console.log('========== Got Add Sentence action ==========');
+      console.log('roomCode: ', action.roomCode);
       console.log('sentence: ', action.sentence);
       console.log('author: ', action.author);
       console.log('storyId: ', action.storyId);
-      Story.findById(action.storyId) // if nested inside gameSession, use `story.find(cb)` as the return statement and continue the chain from here
-        .then(story => {
-          console.log('story: ', story);
+      GameSession.findByRoom(action.roomCode)
+        .then(gameSession => {
+          console.log('gameSession: ', gameSession.roomCode);
 
-          story.sentences.push({
+          const updatingStory = gameSession.stories.find(story => story.id === action.storyId);
+          console.log('updatingStory.id: ', updatingStory.id);
+          updatingStory.sentences.push({
             author: action.author,
             text: action.sentence
           });
 
           // set story as 'completed' if it has reached the max allowed length
-          if (story.sentences.length === story.completionLength) {
-            story.completed = true;
+          if (updatingStory.sentences.length === updatingStory.completionLength) {
+            updatingStory.completed = true;
           }
-          // TODO: const unfinished = gameSession.stories.find(story => !story.completed)
-          // if (!unfinished) {
-          //   gameSession.completed = true;
-          // }
-          return story.save();
+          // set game as 'completed' if there are no unfinished stories
+          const unfinished = gameSession.stories.find(story => !story.completed);
+          if (!unfinished) {
+            gameSession.completed = true;
+          }
+          return gameSession.save();
         })
-        .then(savedData => {
+        .then(savedGame => {
+          console.log('updatedGame: ', savedGame);
+          const savedData = savedGame.stories.find(story => story.id === action.storyId);
           console.log('updatedStory: ', savedData);
           const lastSentence = savedData.sentences[savedData.sentences.length - 1];
-          io.emit('action', {
-            type: 'ADD_SENTENCE',
+          io.in(savedGame.roomCode).emit('action', {
+            type: 'ADD_SENTENCE_SUCCESS',
             sentence: lastSentence.text,
             author: lastSentence.author,
             id: lastSentence.id,
             storyId: savedData.id
           });
-          console.log('ADD_SENTENCE action sent!');
+          console.log('ADD_SENTENCE_SUCCESS action sent!');
+
+          const incomingAuthor = savedGame.players.find(player => player.name === lastSentence.author);
+          const addUpcomingPrompt = ({
+            type: 'ADD_UPCOMING_PROMPT',
+            storyId: savedData.id,
+            prompt: lastSentence.text,
+            receiver: incomingAuthor.passesTo
+          });
+          io.in(savedGame.roomCode).emit('action', addUpcomingPrompt);
+
+        })
+        .catch(err => {
+          console.log('error: ', err);
+          // TODO: implement some sort of error handling here
         });
       break;
     }

@@ -10,7 +10,37 @@
     }
   ],
   "stories": [
-    "000000000000000000000001",
-    "000000000000000000000002"
-  ]
+  {
+    "_id": "000000000000000000000001",
+    "creator": "nameOfPlayer1",
+    "sentences": [
+      {
+        "_id": "111111111111111111110001",
+        "author": "nameOfPlayer1",
+        "text": "This is the first sentence of story 1."
+      },
+      {
+        "_id": "111111111111111111110003",
+        "author": "nameOfPlayer2",
+        "text": "This is the second sentence of story 1."
+      }
+    ]
+  },
+  {
+    "_id": "000000000000000000000002",
+    "creator": "nameOfPlayer2",
+    "sentences": [
+      {
+        "_id": "111111111111111111110002",
+        "author": "nameOfPlayer2",
+        "text": "This is the first sentence of story 2."
+      },
+      {
+        "_id": "111111111111111111110004",
+        "author": "nameOfPlayer1",
+        "text": "This is the second sentence of story 2."
+      }
+    ]
+  }
+]
 }
