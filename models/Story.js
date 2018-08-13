@@ -18,7 +18,7 @@ const storySchema = new mongoose.Schema({
   creator: { type: String, required: true },
   sentences: [sentenceSchema],
   completed: { type: Boolean, default: false }, // needed? could just compute...
-  completionLength: { type: Number, default: 20 }
+  completionLength: { type: Number, default: 10 }
   // when sentences are submitted, check the length of story.sentences
   // if length is not less than story.completionLength,
   // set the 'completed' flag to be true on the story
