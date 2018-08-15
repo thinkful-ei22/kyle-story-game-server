@@ -12,7 +12,6 @@ const bodyParser = require('body-parser');
 
 const { PORT, CLIENT_ORIGIN } = require('./config');
 const { dbConnect } = require('./db-mongoose');
-const Story = require('./models/Story');
 const GameSession = require('./models/GameSession');
 
 const app = express();
@@ -251,7 +250,10 @@ io.on('connection', function(socket) {
         })
         .catch(err => {
           console.log('error: ', err);
-          // TODO: implement some sort of error handling here
+          socket.emit('action', {
+            type: 'ADD_SENTENCE_ERROR',
+            error: 'Unable to add sentence. Weird.'
+          });
         });
       break;
     }
@@ -260,6 +262,10 @@ io.on('connection', function(socket) {
   // HANDLE DISCONNECTION
   socket.on('disconnect', function() {
     console.log('user disconnected');
+    // TODO: remove user from game on disconnect
+    //   maybe just set their `inSession` flag to `false`?
+    //   will need to filter names to send to clients
+    //   and probably re-adjust 'passesTo' if that has been set...
   });
 });
 

@@ -4,10 +4,8 @@ const mongoose = require('mongoose');
 
 const { MONGODB_URI } = require('../config');
 const GameSession = require('../models/GameSession');
-const Story = require('../models/Story');
 
 const seedGameSession = require('../db/seed/gameSession');
-const seedStories = require('../db/seed/stories');
 
 console.log(`Connecting to mongodb at ${MONGODB_URI}`);
 mongoose.connect(MONGODB_URI, { useNewUrlParser: true })
@@ -17,14 +15,10 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true })
   })
   .then(() => {
     console.info('Seeding Database');
-    return Promise.all([
-      Story.insertMany(seedStories),
-      GameSession.insertMany(seedGameSession)
-    ]);
+    return GameSession.insertMany(seedGameSession);
   })
-  .then(([storyResults, gameResults]) => {
-    console.info(`Inserted ${storyResults.length} Stories`);
-    console.info(`Inserted ${gameResults.length} GameSessions`);
+  .then(results => {
+    console.info(`Inserted ${results.length} GameSessions`);
   })
   .then(() => {
     console.info('Disconnecting');
