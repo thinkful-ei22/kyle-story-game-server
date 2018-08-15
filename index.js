@@ -131,13 +131,14 @@ io.on('connection', function(socket) {
           console.error('JOIN_ROOM_ERROR: ', err);
           socket.emit('action', {
             type: 'JOIN_ROOM_ERROR',
-            error: err
+            error: 'Unable to join game. Check your code and try again.'
           });
         });
       break;
     case 'SERVER_JOIN_GAME':
       console.log('========== Got SERVER_JOIN_GAME action ==========');
       console.log('roomCode: ', action.roomCode);
+      console.log('playerName: ', action.playerName);
       GameSession.findByRoom(action.roomCode)
         .then(gameSession => {
           console.log('gameSession: ', gameSession);
@@ -170,13 +171,12 @@ io.on('connection', function(socket) {
             type: 'UPDATE_PLAYERS',
             players: gameSession.players
           });
-
         })
         .catch(err => {
-          console.error('JOIN_GAME_ERROR: ', err);
+          console.error('JOIN_GAME_ERROR: ', err.message);
           socket.emit('action', {
             type: 'JOIN_GAME_ERROR',
-            error: err
+            error: 'Unable to join game. Check your code and try again.'
           });
         });
 
@@ -239,7 +239,7 @@ io.on('connection', function(socket) {
     case 'SERVER_ADD_SENTENCE':
       console.log('========== Got Add Sentence action ==========');
       console.log('roomCode: ', action.roomCode);
-      console.log('sentence: ', action.sentence);
+      console.log('text: ', action.text);
       console.log('author: ', action.author);
       console.log('storyId: ', action.storyId);
       GameSession.findByRoom(action.roomCode)
@@ -250,7 +250,7 @@ io.on('connection', function(socket) {
           console.log('updatingStory.id: ', updatingStory.id);
           updatingStory.sentences.push({
             author: action.author,
-            text: action.sentence
+            text: action.text
           });
 
           // set story as 'completed' if it has reached the max allowed length
