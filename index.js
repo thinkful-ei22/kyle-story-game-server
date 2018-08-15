@@ -34,7 +34,7 @@ app.use(
 );
 
 app.get('/', (req, res) => {
-  res.json('connected via http');
+  res.json('server connected via http');
 });
 
 app.post('/', (req, res, next) => {
@@ -55,63 +55,12 @@ app.post('/', (req, res, next) => {
     });
 });
 
-app.get('/:roomCode', (req, res, next) => {
-  console.log('============================== RoomCode Requested');
-  const { roomCode } = req.params;
-  console.log(roomCode);
-
-  GameSession.findByRoom(roomCode)
-    .then(session => {
-      if (session) {
-        console.log('line 66: ', session);
-        return res.json(session);
-      } else {
-        return next();
-      }
-    })
-    .catch(err => {
-      next(err);
-    });
-});
-
-// app.put('/:roomCode', (req, res, next) => {
-//   console.log('============================== RoomCode UPDATING SESSION');
-//   const { roomCode } = req.params;
-//   console.log(roomCode);
-
-//   /**
-//    * TODO:
-//    * Can probably delete this endpoint. Should be done via socket.
-//    * 
-//    * Need to work on setting up dynamic rooms and connection logic
-//    *   for sockets. Try this one:
-//    *   https://www.alxolr.com/articles/working-with-socket-io-dynamic-namespaces
-//    */
-
-// });
-
 io.on('connection', function(socket) {
   console.log('Socket connected: ' + socket.id);
-
-  // SEND INITIAL STORY DATA TO EACH CLIENT WHEN THEY CONNECT
-  // PROBABLY SHOULD BE REMOVED ONCE ALL GAME CREATION/JOINING LOGIC IS DONE
-  // Story.find()
-  //   .then(stories => {
-  //     console.log(stories);
-  //     socket.emit('action', {
-  //       type: 'ADD_STORIES',
-  //       stories
-  //     });
-  //     console.log('ADD_STORIES action sent!');
-  //   });
 
   // ACTION LISTENER/HANDLING
   socket.on('action', (action) => {
     switch(action.type) {
-    case 'SERVER_HELLO':
-      console.log('Got hello data!', action.data);
-      io.emit('action', {type:'HELLO', data:'good day from the Server!'});
-      break;
     case 'SERVER_JOIN_ROOM':
       console.log('========== Got SERVER_JOIN_ROOM action ==========');
       console.log('roomCode: ', action.roomCode);
@@ -314,7 +263,22 @@ io.on('connection', function(socket) {
   });
 });
 
-// TODO: grab error handling functions from older projects
+// Custom 404 Not Found route handler
+app.use((req, res, next) => {
+  const err = new Error('Not Found');
+  err.status = 404;
+  next(err);
+});
+
+// Custom Error Handler
+app.use((err, req, res, next) => {
+  if (err.status) {
+    const errBody = Object.assign({}, err, { message: err.message });
+    res.status(err.status).json(errBody);
+  } else {
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
 
 function runServer(port = PORT) {
   server
