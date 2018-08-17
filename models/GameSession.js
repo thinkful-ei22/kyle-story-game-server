@@ -18,7 +18,7 @@ const storySchema = new mongoose.Schema({
   creator: { type: String, required: true },
   sentences: [sentenceSchema],
   completed: { type: Boolean, default: false },
-  completionLength: { type: Number, default: 3 }
+  completionLength: { type: Number, default: 10 }
 });
 storySchema.set('toObject', {
   virtuals: true,
