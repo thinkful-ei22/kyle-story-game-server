@@ -38,7 +38,6 @@ app.get('/', (req, res) => {
 
 app.post('/', (req, res, next) => {
   const { playerName } = req.body;
-  console.log(playerName);
   const options = { length: 6, pool: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' };
   const roomCode = chance.string(options);
 
@@ -46,7 +45,6 @@ app.post('/', (req, res, next) => {
 
   GameSession.create(newSession)
     .then(result => {
-      console.log(result);
       res
         .location(`${req.originalUrl}/${result.roomCode}`)
         .status(201)
@@ -55,17 +53,14 @@ app.post('/', (req, res, next) => {
 });
 
 io.on('connection', function(socket) {
-  console.log('Socket connected: ' + socket.id);
+  console.log('========== user connected ==========');
 
   // ACTION LISTENER/HANDLING
   socket.on('action', (action) => {
     switch(action.type) {
     case 'SERVER_JOIN_ROOM':
-      console.log('========== Got SERVER_JOIN_ROOM action ==========');
-      console.log('roomCode: ', action.roomCode);
       GameSession.findByRoom(action.roomCode)
         .then(gameSession => {
-          console.log('joinRoom found a gameSession with completed: ', gameSession.completed);
           if (gameSession && !gameSession.completed) {
             socket.join(action.roomCode);
           } else {
@@ -76,7 +71,6 @@ io.on('connection', function(socket) {
           }
         })
         .catch(err => {
-          console.error('JOIN_ROOM_ERROR: ', err);
           socket.emit('action', {
             type: 'JOIN_ROOM_ERROR',
             error: 'Unable to join game. Check your code and try again.'
@@ -84,12 +78,8 @@ io.on('connection', function(socket) {
         });
       break;
     case 'SERVER_JOIN_GAME':
-      console.log('========== Got SERVER_JOIN_GAME action ==========');
-      console.log('roomCode: ', action.roomCode);
-      console.log('playerName: ', action.playerName);
       GameSession.findByRoom(action.roomCode)
         .then(gameSession => {
-          console.log('gameSession: ', gameSession);
           if (gameSession && !gameSession.started) {
             const existingPlayer = gameSession.players.find(
               player => player.name === action.playerName
@@ -103,7 +93,6 @@ io.on('connection', function(socket) {
           return gameSession.save();
         })
         .then(gameSession => {
-          console.log('gameSession saved');
           // send full gameSession data to player
           socket.emit('action', {
             type: 'JOIN_GAME_SUCCESS',
@@ -121,7 +110,6 @@ io.on('connection', function(socket) {
           });
         })
         .catch(err => {
-          console.error('JOIN_GAME_ERROR: ', err.message);
           socket.emit('action', {
             type: 'JOIN_GAME_ERROR',
             error: 'Unable to join game. Check your code and try again.'
@@ -130,18 +118,13 @@ io.on('connection', function(socket) {
 
       break;
     case 'SERVER_START_GAME':
-      console.log('========== Got SERVER_START_GAME action ==========');
       GameSession.findByRoom(action.roomCode)
         .then(gameSession => {
-          console.log(gameSession);
           if (gameSession) {
-            console.log('add `passesTo` setting for each player');
+            // add `passesTo` setting for each player
             gameSession.players.forEach((player, index) => {
               const nextIndex = gameSession.players[index + 1] ? index + 1 : 0;
-              console.log(nextIndex);
-              console.log(player.name, ' passesTo: ', gameSession.players[nextIndex].name);
               player.passesTo = gameSession.players[nextIndex].name;
-              console.log(player.passesTo);
 
               // create an empty story for each player so there's a storyId to pass around
               gameSession.stories.push({ creator: player.name });
@@ -151,10 +134,7 @@ io.on('connection', function(socket) {
           return gameSession.save();
         })
         .then(gameSession => {
-          console.log('players: *', gameSession.players);
-          console.log('stories: *', gameSession.stories);
           if (gameSession && gameSession.started) {
-            console.log('started game for roomCode: ', gameSession.roomCode);
             io.in(action.roomCode).emit('action', {
               type: 'START_GAME_SUCCESS',
               gameSession
@@ -168,7 +148,6 @@ io.on('connection', function(socket) {
               });
             });
           } else {
-            console.log('unable to start game for roomCode: ', gameSession.roomcode);
             socket.emit('action', {
               type: 'START_GAME_ERROR',
               error: 'Unable to start game (else). Check your logic, Kyle!'
@@ -176,8 +155,6 @@ io.on('connection', function(socket) {
           }
         })
         .catch(err => {
-          console.log('unable to start game for roomCode: (catch)', action.roomcode);
-          console.log('error: ', err);
           socket.emit('action', {
             type: 'START_GAME_ERROR',
             error: 'Unable to start game (catch). Check your logic, Kyle!'
@@ -185,17 +162,9 @@ io.on('connection', function(socket) {
         });
       break;
     case 'SERVER_ADD_SENTENCE':
-      console.log('========== Got Add Sentence action ==========');
-      console.log('roomCode: ', action.roomCode);
-      console.log('text: ', action.text);
-      console.log('author: ', action.author);
-      console.log('storyId: ', action.storyId);
       GameSession.findByRoom(action.roomCode)
         .then(gameSession => {
-          console.log('gameSession: ', gameSession.roomCode);
-
           const updatingStory = gameSession.stories.find(story => story.id === action.storyId);
-          console.log('updatingStory.id: ', updatingStory.id);
           updatingStory.sentences.push({
             author: action.author,
             text: action.text
@@ -213,9 +182,7 @@ io.on('connection', function(socket) {
           return gameSession.save();
         })
         .then(savedGame => {
-          console.log('updatedGame: ', savedGame);
           const updatedStory = savedGame.stories.find(story => story.id === action.storyId);
-          console.log('updatedStory: ', updatedStory);
           const lastSentence = updatedStory.sentences[updatedStory.sentences.length - 1];
           io.in(savedGame.roomCode).emit('action', {
             type: 'ADD_SENTENCE_SUCCESS',
@@ -224,7 +191,6 @@ io.on('connection', function(socket) {
             id: lastSentence.id,
             storyId: updatedStory.id
           });
-          console.log('ADD_SENTENCE_SUCCESS action sent!');
           
           if (!updatedStory.completed) {
             const incomingAuthor = savedGame.players.find(player => player.name === lastSentence.author);
@@ -235,7 +201,6 @@ io.on('connection', function(socket) {
               receiver: incomingAuthor.passesTo
             });
             io.in(savedGame.roomCode).emit('action', addUpcomingPrompt);
-            console.log('ADD_UPCOMING_PROMPT action sent!');
           }
           
           if (savedGame.completed) {
@@ -244,12 +209,10 @@ io.on('connection', function(socket) {
               completed: savedGame.completed
             });
             io.in(savedGame.roomCode).emit('action', finishGame);
-            console.log('FINISH_GAME action sent!');
           }
 
         })
         .catch(err => {
-          console.log('error: ', err);
           socket.emit('action', {
             type: 'ADD_SENTENCE_ERROR',
             error: 'Unable to add sentence. Weird.'
@@ -261,7 +224,7 @@ io.on('connection', function(socket) {
 
   // HANDLE DISCONNECTION
   socket.on('disconnect', function() {
-    console.log('user disconnected');
+    console.log('========== user disconnected ==========');
     // TODO: remove user from game on disconnect
     //   maybe just set their `inSession` flag to `false`?
     //   will need to filter names to send to clients
